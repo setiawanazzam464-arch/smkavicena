@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Setup Database Ekstrakurikuler</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .card {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+    }
+    h2 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    p {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    button {
+      background-color: #0d6efd;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+      width: 100%;
+    }
+    button:hover {
+      background-color: #0b5ed7;
+    }
+    button:disabled {
+      background-color: #6c757d;
+      cursor: not-allowed;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      display: none;
+    }
+    .success {
+      background-color: #d1e7dd;
+      color: #0f5132;
+      border: 1px solid #badbcc;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #842029;
+      border: 1px solid #f5c2c7;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>Setup Database Otomatis</h2>
+    <p>Klik tombol di bawah untuk membuat struktur tab database (USERS, EKSTRAKURIKULER, PELATIH, ANGGOTA, KEGIATAN, ABSENSI, & GALERI) pada Spreadsheet Anda.</p>
+    
+    <button id="btnSetup" onclick="prosesSetup()">Jalankan Setup Database</button>
+    
+    <div id="result"></div>
+  </div>
+
+  <!-- SCRIPT FRONTEND (INTERAKSI USER) -->
+  <script>
+    function prosesSetup() {
+      const btn = document.getElementById('btnSetup');
+      const resultDiv = document.getElementById('result');
+
+      btn.disabled = true;
+      btn.innerText = 'Sedang Memproses...';
+      resultDiv.style.display = 'none';
+
+      // Memanggil fungsi Apps Script backend
+      google.script.run
+        .withSuccessHandler(function(res) {
+          btn.disabled = false;
+          btn.innerText = 'Jalankan Setup Database';
+          resultDiv.className = 'success';
+          resultDiv.innerText = res;
+          resultDiv.style.display = 'block';
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.innerText = 'Jalankan Setup Database';
+          resultDiv.className = 'error';
+          resultDiv.innerText = 'Gagal: ' + err.message;
+          resultDiv.style.display = 'block';
+        })
+        .setupDatabaseAwal();
+    }
+  </script>
+
+  <!-- SCRIPT BACKEND (GOOGLESCRIPT DATABASE LOGIC) -->
+  <script server-side>
+    // ==========================================
+    // FUNGSI SETUP OTOMATIS DATABASE
+    // ==========================================
+    function setupDatabaseAwal() {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      
+      // 1. Tab USERS
+      let sheetUsers = ss.getSheetByName('USERS') || ss.insertSheet('USERS');
+      if (sheetUsers.getLastRow() === 0) {
+        sheetUsers.appendRow(['id', 'nama', 'username', 'password_hash', 'role', 'ekskul_id', 'status']);
+        // Password default admin: admin123
+        sheetUsers.appendRow([
+          'USR-001', 
+          'Admin Sekolah', 
+          'admin', 
+          '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', 
+          'Admin', 
+          'ALL', 
+          'Aktif'
+        ]);
+      }
+
+      // 2. Tab EKSTRAKURIKULER
+      let sheetEkskul = ss.getSheetByName('EKSTRAKURIKULER') || ss.insertSheet('EKSTRAKURIKULER');
+      if (sheetEkskul.getLastRow() === 0) {
+        sheetEkskul.appendRow(['id', 'nama_ekskul', 'pelatih_id', 'jadwal', 'lokasi']);
+      }
+
+      // 3. Tab PELATIH
+      let sheetPelatih = ss.getSheetByName('PELATIH') || ss.insertSheet('PELATIH');
+      if (sheetPelatih.getLastRow() === 0) {
+        sheetPelatih.appendRow(['id', 'nama_pelatih', 'no_hp', 'spesialisasi']);
+      }
+
+      // 4. Tab ANGGOTA
+      let sheetAnggota = ss.getSheetByName('ANGGOTA') || ss.insertSheet('ANGGOTA');
+      if (sheetAnggota.getLastRow() === 0) {
+        sheetAnggota.appendRow(['id', 'nis', 'nama_siswa', 'kelas', 'jurusan', 'ekskul_id']);
+      }
+
+      // 5. Tab KEGIATAN (Absensi Pelatih via GPS)
+      let sheetKegiatan = ss.getSheetByName('KEGIATAN') || ss.insertSheet('KEGIATAN');
+      if (sheetKegiatan.getLastRow() === 0) {
+        sheetKegiatan.appendRow(['id', 'ekskul_id', 'nama_kegiatan', 'tanggal', 'jam', 'lokasi', 'koordinat_gps', 'status_pelatih']);
+      }
+
+      // 6. Tab ABSENSI (Absensi Siswa oleh Pelatih)
+      let sheetAbsensi = ss.getSheetByName('ABSENSI') || ss.insertSheet('ABSENSI');
+      if (sheetAbsensi.getLastRow() === 0) {
+        sheetAbsensi.appendRow(['id', 'kegiatan_id', 'anggota_id', 'tanggal', 'status', 'keterangan']);
+      }
+
+      // 7. Tab GALERI
+      let sheetGaleri = ss.getSheetByName('GALERI') || ss.insertSheet('GALERI');
+      if (sheetGaleri.getLastRow() === 0) {
+        sheetGaleri.appendRow(['id', 'ekskul_id', 'url_foto', 'tanggal']);
+      }
+
+      // Hapus 'Sheet1' default jika ada
+      let defaultSheet = ss.getSheetByName('Sheet1') || ss.getSheetByName('Lembar1');
+      if (defaultSheet && ss.getSheets().length > 1) {
+        ss.deleteSheet(defaultSheet);
+      }
+
+      return 'SETUP DATABASE BERHASIL!';
+    }
+
+    function doGet() {
+      return HtmlService.createHtmlOutputFromFile('Index');
+    }
+  </script>
+</body>
+</html>
